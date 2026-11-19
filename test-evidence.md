@@ -74,3 +74,33 @@ DB_HOST: must be present and nonempty
 1
 ```
 - **Result:** Rejected (`Exit code: 1`), no secret values printed.
+
+---
+
+## 5. Peer Review & Follow-up Improvement (Boundary Case: `whitespace-secret.env.example`)
+
+### Peer Review Comment
+> **Reviewer Comment:**
+> "I reproduced the negative test with `bad-port.env.example` (`APP_PORT=80`), which failed with exit code `1` as expected. However, two boundary conditions weren't tested or handled yet:
+> 1. Upper port boundary (`APP_PORT=65536`, just 1 above the maximum `65535`) and capitalized `DEBUG=False`.
+> 2. If someone writes `DB_PASSWORD=""` or `DB_HOST=""` (quoted empty strings in `.env` files), `line.split('=', 1)` leaves literal `""` which looks non-empty to `if not db_password:`."
+
+### Follow-up Response & Fix
+- Updated `validate(values)` in `validator.py` to strip whitespace, enforce strict digit representation on `APP_PORT`, and reject empty quoted strings (`""` and `''`) on `DB_HOST` and `DB_PASSWORD` without printing the secret value.
+- Added `whitespace-secret.env.example` to test `APP_PORT=65536`, `DEBUG=False`, `DB_HOST=""`, and `DB_PASSWORD=""`.
+
+**Command:**
+```powershell
+python validator.py whitespace-secret.env.example
+$LASTEXITCODE
+```
+
+**Output:**
+```text
+APP_PORT: port 65536 is out of allowed range (1024..65535)
+DEBUG: must be set to exactly 'false'
+DB_HOST: must be present and nonempty
+DB_PASSWORD: must be present and nonempty
+1
+```
+- **Result:** Rejected (`Exit code: 1`), no secret values printed.
