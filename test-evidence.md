@@ -77,17 +77,23 @@ DB_HOST: must be present and nonempty
 
 ---
 
-## 5. Peer Review & Follow-up Improvement (Boundary Case: `whitespace-secret.env.example`)
+## 5. Peer Review & Follow-up Improvement (PR #1 Review by `@kulkarni6060`)
 
-### Peer Review Comment
-> **Reviewer Comment:**
-> "I reproduced the negative test with `bad-port.env.example` (`APP_PORT=80`), which failed with exit code `1` as expected. However, two boundary conditions weren't tested or handled yet:
-> 1. Upper port boundary (`APP_PORT=65536`, just 1 above the maximum `65535`) and capitalized `DEBUG=False`.
-> 2. If someone writes `DB_PASSWORD=""` or `DB_HOST=""` (quoted empty strings in `.env` files), `line.split('=', 1)` leaves literal `""` which looks non-empty to `if not db_password:`."
+### Peer Review Comment ([PR #1 Comment](https://github.com/itz-sajjad/devops-class02-config-validator/pull/1#issuecomment-7015661385))
+> **Reviewer (`@kulkarni6060` — Nov 19, 2026):**
+> "Ran it locally. `valid.env.example` passes with exit 0, and `messy.env`, `bad-port`, and `missing-host-and-debug` all fail with exit 1 as expected. Nice work.
+>
+> One edge case: if the env file has a line without `=` (like `GARBAGE_LINE`), `load()` crashes with a `ValueError`. It still exits 1, but from a traceback rather than a validation error, so CI can't tell a bad config from a broken script. Maybe skip or report those lines instead?
+>
+> Small extras if you want:
+> - `APP_PORT=８０８０` (fullwidth digits) gets accepted, since `isdigit()` allows Unicode digits. `isascii()` would block it.
+> - `DB_HOST=""` counts as empty, but `APP_PORT="8080"` is rejected. Stripping quotes once in `load()` would make all the rules handle quotes the same way."
 
 ### Follow-up Response & Fix
-- Updated `validate(values)` in `validator.py` to strip whitespace, enforce strict digit representation on `APP_PORT`, and reject empty quoted strings (`""` and `''`) on `DB_HOST` and `DB_PASSWORD` without printing the secret value.
-- Added `whitespace-secret.env.example` to test `APP_PORT=65536`, `DEBUG=False`, `DB_HOST=""`, and `DB_PASSWORD=""`.
+1. **Malformed lines without `=` (`GARBAGE_LINE`):** Updated `load()` to detect non-comment lines missing `=` instead of crashing with an unhandled `ValueError` traceback, and reported them cleanly in `validate()` as `SYNTAX: line <N> is missing '=' (expected KEY=value format)`.
+2. **Fullwidth Unicode digits (`APP_PORT=８０８０`):** Added `raw_port.isascii() and raw_port.isdigit()` check so non-ASCII Unicode digits are rejected cleanly.
+3. **Consistent quote stripping:** Added `_strip_quotes()` helper so quoted values like `APP_PORT="8080"` or `DEBUG="false"` are normalized consistently while empty quotes (`DB_HOST=""`, `DB_PASSWORD=""`) still evaluate to empty strings and fail validation without exposing secret values.
+4. **Test Case (`whitespace-secret.env.example`):** Updated to test `GARBAGE_LINE`, `APP_PORT=８０８０`, `DEBUG="false"`, `DB_HOST=""`, and `DB_PASSWORD=""`.
 
 **Command:**
 ```powershell
@@ -97,10 +103,10 @@ $LASTEXITCODE
 
 **Output:**
 ```text
-APP_PORT: port 65536 is out of allowed range (1024..65535)
-DEBUG: must be set to exactly 'false'
+SYNTAX: line 1 is missing '=' (expected KEY=value format)
+APP_PORT: invalid integer value '８０８０' (must be an ASCII integer between 1024 and 65535)
 DB_HOST: must be present and nonempty
 DB_PASSWORD: must be present and nonempty
 1
 ```
-- **Result:** Rejected (`Exit code: 1`), no secret values printed.
+- **Result:** Rejected (`Exit code: 1`), no traceback crash, and no secret values printed.

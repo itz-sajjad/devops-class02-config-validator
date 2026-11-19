@@ -14,7 +14,6 @@ This repository contains the solution for **Class 2: Configuration Validation an
 | `missing-host-and-debug.env.example` | Negative test case: missing `DB_HOST` and unsafe `DEBUG=true` |
 | `whitespace-secret.env.example` | Boundary negative test case (from peer review): whitespace-only values and port `65536` |
 | `test-evidence.md` | Execution outputs, exit codes, and peer review evidence |
-| `CLASS-02-STUDENT-HANDOUT.md` | Original lab instructions and grading rubric |
 
 ## Configuration Contract
 
