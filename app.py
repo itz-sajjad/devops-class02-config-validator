@@ -36,3 +36,4 @@ def db_time():
     except (pymysql.MySQLError, KeyError):
         app.logger.warning("Database request failed; inspect dependency configuration")
         return jsonify(error="database unavailable"), 503
+# build v2 release
